@@ -6,6 +6,7 @@ from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.chrome.options import Options
 
 from mydata import credentials
+from mydata.get_data import username,password
 from get_depts import depts
 from course import Course
 
@@ -15,10 +16,7 @@ from timeit import default_timer as timer
 
 import os,sys,time
 
-def get_password():
-    with open('secrets.txt','r') as file:
-        password = file.readline()
-    return password
+
 
 
 
@@ -180,7 +178,7 @@ class CourseSniper:
                 break
             except NoSuchElementException:
                 print('Waiting on Login Page')
-        netid.send_keys('sag315')
+        netid.send_keys(username)
         password.send_keys(get_password() + Keys.ENTER)
         
 
