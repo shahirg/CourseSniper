@@ -46,3 +46,5 @@ class Course:
                 break
             except NoSuchElementException as err:
                 print(err)   
+
+# if(__name__ == "__main__"):

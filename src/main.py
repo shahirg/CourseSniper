@@ -1,12 +1,12 @@
 from twilio.rest import Client
 
 from selenium import webdriver
-from selenium.common.exceptions import NoSuchElementException, ElementNotInteractableException
+from selenium.common.exceptions import NoSuchElementException, ElementNotInteractableException, StaleElementReferenceException
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.chrome.options import Options
 
-from mydata import credentials
-from mydata.get_data import username,password
+from mydata import credentials as cred
+from mydata import get_data
 from get_depts import depts
 from course import Course
 
@@ -100,10 +100,13 @@ class CourseSniper:
                 sleep(.5)  
                 self.driver.find_element_by_xpath("//div[@id = 'widget_dijit_form_FilteringSelect_0']").click()
                 dept = self.driver.find_element_by_xpath("//input[@id = 'dijit_form_FilteringSelect_0']")
-                dept.send_keys(self.course.dept+ Keys.ENTER)
+                dept.send_keys(self.course.dept)
+                sleep(2)
+                dept.send_keys(Keys.ENTER)
                 break
             except NoSuchElementException as err:
                 print('Waiting on Frame to Load....')
+        sleep(2)
 
     def open_course(self):  
         count = 0       
@@ -127,7 +130,7 @@ class CourseSniper:
             status = self.driver.find_element_by_xpath("//span[text() = '"+section+"']/../span[@class ='sectionDataNumber']/span")
             self.app_status = 'Check Complete: Section Closed'
             
-            if "sectionopen" in status.get_attribute("class"):        
+            if ("sectionopen" in status.get_attribute("class")):        
                 self.driver.find_element_by_xpath("//span[text() = '"+section+"']/../span[@class= 'register']/a").click()
                 #driver.find_element_by_xpath("//input[@id='submit']").click()            
                 sleep(1)
@@ -144,8 +147,15 @@ class CourseSniper:
                 break;
             
     def register(self):
-        self.driver.find_element_by_xpath("//input[@id='submit']").click()
-        send_text('Registration for '+self.course.course_num+' complete')
+        while(True):
+            try:
+                self.driver.find_element_by_xpath("//input[@id='submit']").click()
+                break
+            except NoSuchElementException:
+                print("waiting on WebReg")
+                sleep(1)
+        self.send_text('Registration for '+self.course.course_num+' complete')
+        self.send_text('Registration for '+self.course.course_num+' complete',num = "c")
         self.driver.find_element_by_xpath("//a[@href= 'logout.htm']").click()
         self.registered = True
         self.app_status = 'Registration Complete'
@@ -160,12 +170,13 @@ class CourseSniper:
         alert_obj = driver.switch_to.alert
         alert_obj.accept()
         send_text(self.course.drop.course_num + ' has been dropped')
+        send_text(self.course.drop.course_num + ' has been dropped',num = "c")
         print(self.course.drop.course_num + ' has been dropped')
 
-    def send_text(self,message):
+    def send_text(self,message,num = "me"):
         client = Client(cred.account_num,cred.auth_tok)
         client.messages.create(
-            to=cred.numbers["me"], 
+            to=cred.numbers[num], 
             from_=cred.twilio_num,
             body=(message)) 
     
@@ -178,8 +189,19 @@ class CourseSniper:
                 break
             except NoSuchElementException:
                 print('Waiting on Login Page')
-        netid.send_keys(username)
-        password.send_keys(get_password() + Keys.ENTER)
+        #netid.send_keys(get_data.username)
+
+        try:
+            netid.send_keys(get_data.username)
+            password.send_keys(get_data.password)
+        except StaleElementReferenceException:
+            sleep(1)
+            password = self.driver.find_element_by_xpath("//body/div/div/form/fieldset/div/input[@id ='password']")
+            password.send_keys(get_data.password)
+  
+
+        
+        #password.send_keys(Keys.ENTER)
         
 
 
@@ -188,20 +210,9 @@ net_sec = Course('14:332:424','10765')
 soft_meth = Course('01:198:213',indexes = soft_meth_sections,drop = net_sec)
 gen_psych = Course('01:830:101','07226',drop = net_sec)
 net_sec.drop= gen_psych
+soc_sections = ['07450', '07451', '07452', '07453', '07454', '07455']
+soc = Course('01:920:101',index='07460')
 
-c = CourseSniper(soft_meth)
-# while(True):
-#     current_time = float(datetime.now().strftime("%H.%M"))
-#     if current_time < 2.00 or current_time > 6.30:
-#         start = timer()
-#         #snipeV2(soft_meth) 
-#         c = CourseSniper(soft_meth)
-#         print("Run Time:" + str(timer()-start))
-#         print(datetime.now().strftime("%B %d %Y %I:%M:%S %p"))
-#         if(c.registered):
-#             break
-#         sleep(300)
-#     else:
-#         print(str(current_time))
-#         print('sleeping')
-#         sleep(60*60)
+
+if(__name__ == "__main__"):
+    c = CourseSniper(soc)
